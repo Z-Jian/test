@@ -1,6 +1,31 @@
 pipeline {
 	agent none
 	stages {
+
+        stage('Build') { 
+            agent{
+                docker {
+                    image 'node:lts-bullseye-slim' 
+                    args '-p 3000:3000' 
+                }
+            }
+            steps {
+                sh 'npm install' 
+            }
+        }
+
+		stage('Checkout SCM') {
+			steps {
+				git '/home/JenkinsDependencyCheckTest'
+			}
+		}
+
+		stage('OWASP DependencyCheck') {
+			steps {
+				dependencyCheck additionalArguments: '--format HTML --format XML --suppression suppression.xml', odcInstallation: 'Default'
+			}
+		}
+
 		stage('Integration UI Test') {
 			parallel {
 				stage('Deploy') {
@@ -29,6 +54,11 @@ pipeline {
 					}
 				}
 			}
+		}
+	}
+	post {
+		success {
+			dependencyCheckPublisher pattern: 'dependency-check-report.xml'
 		}
 	}
 }
